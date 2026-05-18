@@ -43,7 +43,14 @@ You can also import `.vsconfig` from Visual Studio Installer.
 ```powershell
 .\scripts\Test-BuildPrerequisites.ps1
 dotnet restore FlowFlow.sln
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" FlowFlow.sln /p:Configuration=Debug
+$vsPath = (& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -products * -version "[17.0,18.0)" -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1)
+& "$vsPath\MSBuild\Current\Bin\MSBuild.exe" FlowFlow.sln /p:Configuration=Debug
+```
+
+If Visual Studio is installed in a custom location, pass it explicitly:
+
+```powershell
+.\scripts\Test-BuildPrerequisites.ps1 -VisualStudioPath "D:\Apps\Visual Studio\2022\BuildTools"
 ```
 
 For WinUI 3, Visual Studio 2022 should include:

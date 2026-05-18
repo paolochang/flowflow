@@ -1,21 +1,46 @@
 param(
-    [string]$VisualStudioPath = "C:\Program Files\Microsoft Visual Studio\2022\Community"
+    [string]$VisualStudioPath = ""
 )
 
 $ErrorActionPreference = "Stop"
 
+function Get-VisualStudioPath {
+    if (-not [string]::IsNullOrWhiteSpace($VisualStudioPath)) {
+        return $VisualStudioPath
+    }
+
+    $vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswherePath) {
+        $detectedPath = & $vswherePath `
+            -products * `
+            -version "[17.0,18.0)" `
+            -requires Microsoft.Component.MSBuild `
+            -property installationPath
+
+        if (-not [string]::IsNullOrWhiteSpace($detectedPath)) {
+            return ($detectedPath | Select-Object -First 1)
+        }
+    }
+
+    return "C:\Program Files\Microsoft Visual Studio\2022\Community"
+}
+
+$resolvedVisualStudioPath = Get-VisualStudioPath
+Write-Host "Using Visual Studio installation: $resolvedVisualStudioPath"
+Write-Host ""
+
 $checks = @(
     @{
         Name = "Visual Studio 2022 MSBuild"
-        Path = Join-Path $VisualStudioPath "MSBuild\Current\Bin\MSBuild.exe"
+        Path = Join-Path $resolvedVisualStudioPath "MSBuild\Current\Bin\MSBuild.exe"
     },
     @{
         Name = "MSVC toolchain"
-        Path = Join-Path $VisualStudioPath "VC\Tools\MSVC"
+        Path = Join-Path $resolvedVisualStudioPath "VC\Tools\MSVC"
     },
     @{
         Name = "Windows app packaging PRI tasks"
-        Path = Join-Path $VisualStudioPath "MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll"
+        Path = Join-Path $resolvedVisualStudioPath "MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll"
     }
 )
 
