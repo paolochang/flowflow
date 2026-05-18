@@ -1,0 +1,21 @@
+<Window
+    x:Class="FlowFlow.RegionSelectionWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Select region">
+    <Grid Background="#99000000" PointerPressed="Overlay_PointerPressed" PointerMoved="Overlay_PointerMoved" PointerReleased="Overlay_PointerReleased">
+        <Canvas>
+            <Rectangle x:Name="SelectionRectangle"
+                       Stroke="#FFFFFFFF"
+                       StrokeThickness="2"
+                       Fill="#22FFFFFF"
+                       Visibility="Collapsed" />
+        </Canvas>
+        <TextBlock Text="Drag to select a screenshot region. Esc cancels."
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Top"
+                   Margin="0,24,0,0"
+                   Foreground="White"
+                   FontSize="16" />
+    </Grid>
+</Window>

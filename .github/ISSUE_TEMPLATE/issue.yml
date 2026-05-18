@@ -1,0 +1,65 @@
+name: Issue
+description: Report a bug, request a feature, or suggest an improvement
+title: "[Issue]: "
+labels: ["triage"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue type
+      description: What kind of issue is this?
+      options:
+        - Bug report
+        - Feature request
+        - Documentation
+        - Question
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the issue or request.
+      placeholder: What happened? What would you like to see changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: For bugs, list the steps needed to reproduce the issue.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Share relevant system details.
+      placeholder: |
+        OS:
+        .NET SDK:
+        FlowFlow version or commit:
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add screenshots, logs, or links if helpful.

@@ -1,0 +1,60 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+out/
+publish/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# .NET
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.nupkg
+*.snupkg
+project.lock.json
+artifacts/
+
+# Windows App SDK / MSIX generated output
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.cer
+*.pfx
+
+# Logs
+*.log
+logs/
+
+# Local app data generated while developing FlowFlow
+.ai-refs/
+screenshots/
+resume-prompt.md
+screenshots.json
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
