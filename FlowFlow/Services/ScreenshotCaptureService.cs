@@ -25,11 +25,41 @@ public sealed class ScreenshotCaptureService
 
     private static void CaptureRectangle(Rectangle region, string path)
     {
-        using var bitmap = new Bitmap(region.Width, region.Height);
-        using var graphics = Graphics.FromImage(bitmap);
-        graphics.CopyFromScreen(region.Left, region.Top, 0, 0, region.Size, CopyPixelOperation.SourceCopy);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        bitmap.Save(path, ImageFormat.Png);
+        using var bitmap = new Bitmap(region.Width, region.Height);
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.CopyFromScreen(region.Left, region.Top, 0, 0, region.Size, CopyPixelOperation.SourceCopy);
+        }
+
+        FileStream? stream = null;
+        try
+        {
+            stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+            bitmap.Save(stream, ImageFormat.Png);
+        }
+        catch
+        {
+            stream?.Dispose();
+            stream = null;
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch
+            {
+                // Preserve the original capture failure.
+            }
+
+            throw;
+        }
+        finally
+        {
+            stream?.Dispose();
+        }
     }
 
     [DllImport("user32.dll")]

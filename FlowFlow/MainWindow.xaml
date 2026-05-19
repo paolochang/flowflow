@@ -158,8 +158,10 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Padding="16,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
-            <TextBlock Text="{Binding StatusText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-        </Border>
+        <InfoBar Grid.Row="2"
+                 IsOpen="True"
+                 IsClosable="False"
+                 Severity="{Binding StatusSeverity, Converter={StaticResource StatusSeverityConverter}}"
+                 Message="{Binding StatusText}" />
     </Grid>
 </Window>

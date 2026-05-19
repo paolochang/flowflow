@@ -3,8 +3,16 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowFlow.Models;
 using FlowFlow.Services;
+using Microsoft.UI.Dispatching;
 
 namespace FlowFlow.ViewModels;
+
+public enum StatusSeverity
+{
+    Info,
+    Warning,
+    Error
+}
 
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -12,6 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ScreenshotCaptureService _captureService;
     private readonly ResumePromptGenerator _promptGenerator;
     private readonly ClipboardService _clipboardService;
+    private readonly DispatcherQueueTimer _statusClearTimer;
 
     private string _newProjectName = string.Empty;
     private string _newTaskName = string.Empty;
@@ -21,17 +30,27 @@ public sealed partial class MainViewModel : ObservableObject
     private string _taskNotes = string.Empty;
     private string _resumePrompt = string.Empty;
     private string _statusText = "Choose or create a project to start.";
+    private StatusSeverity _statusSeverity = StatusSeverity.Info;
 
     public MainViewModel(
         FileSystemTaskStore store,
         ScreenshotCaptureService captureService,
         ResumePromptGenerator promptGenerator,
-        ClipboardService clipboardService)
+        ClipboardService clipboardService,
+        DispatcherQueue dispatcherQueue)
     {
         _store = store;
         _captureService = captureService;
         _promptGenerator = promptGenerator;
         _clipboardService = clipboardService;
+        _statusClearTimer = dispatcherQueue.CreateTimer();
+        _statusClearTimer.Interval = TimeSpan.FromSeconds(3);
+        _statusClearTimer.IsRepeating = false;
+        _statusClearTimer.Tick += (_, _) =>
+        {
+            SetProperty(ref _statusText, string.Empty, nameof(StatusText));
+            SetProperty(ref _statusSeverity, StatusSeverity.Info, nameof(StatusSeverity));
+        };
         RefreshProjects();
     }
 
@@ -108,7 +127,47 @@ public sealed partial class MainViewModel : ObservableObject
     public string StatusText
     {
         get => _statusText;
-        set => SetProperty(ref _statusText, value);
+        set => SetStatus(value, StatusSeverity.Info);
+    }
+
+    public StatusSeverity StatusSeverity
+    {
+        get => _statusSeverity;
+        set => SetProperty(ref _statusSeverity, value);
+    }
+
+    public void SetStatus(string message, StatusSeverity severity)
+    {
+        SetProperty(ref _statusText, message, nameof(StatusText));
+        SetProperty(ref _statusSeverity, severity, nameof(StatusSeverity));
+
+        if (severity == StatusSeverity.Info)
+        {
+            _statusClearTimer.Stop();
+            _statusClearTimer.Start();
+            return;
+        }
+
+        _statusClearTimer.Stop();
+    }
+
+    public void ReportHotkeyResults(IReadOnlyList<HotkeyRegistration> results)
+    {
+        var failures = results.Where(result => !result.Succeeded).ToList();
+        if (failures.Count == 0)
+        {
+            return;
+        }
+
+        var message = string.Join(
+            Environment.NewLine,
+            failures.Select(result => $"Hotkey {result.Chord} unavailable: {result.Error}. Use the in-window button instead."));
+        SetStatus(message, StatusSeverity.Warning);
+    }
+
+    public void ReportCaptureFailure(Exception ex)
+    {
+        SetStatus(GetCaptureFailureMessage(ex), StatusSeverity.Error);
     }
 
     [RelayCommand]
@@ -146,10 +205,17 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        var path = _store.GetNextScreenshotPath(SelectedTask);
-        await _captureService.CaptureFullScreenAsync(path);
-        AddScreenshot(path, ScreenshotKind.Reference);
-        StatusText = $"Saved {Path.GetFileName(path)}.";
+        try
+        {
+            var path = _store.GetNextScreenshotPath(SelectedTask);
+            await _captureService.CaptureFullScreenAsync(path);
+            AddScreenshot(path, ScreenshotKind.Reference);
+            StatusText = $"Saved {Path.GetFileName(path)}.";
+        }
+        catch (Exception ex)
+        {
+            ReportCaptureFailure(ex);
+        }
     }
 
     [RelayCommand]
@@ -267,5 +333,16 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _store.SaveScreenshots(SelectedTask, Screenshots);
         }
+    }
+
+    private static string GetCaptureFailureMessage(Exception ex)
+    {
+        return ex switch
+        {
+            UnauthorizedAccessException => "Capture failed: cannot write to screenshots folder (permission denied).",
+            IOException => "Capture failed: file system error — disk full or path in use.",
+            System.Runtime.InteropServices.ExternalException => "Capture failed: image encoding error.",
+            _ => $"Capture failed: {ex.GetType().Name}."
+        };
     }
 }
