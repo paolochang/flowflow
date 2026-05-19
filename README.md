@@ -32,19 +32,35 @@ project-name/
         resume-prompt.md
 ```
 
-## Build
+## Local Setup
 
-The app targets .NET 8 and Windows App SDK:
+FlowFlow targets .NET 8, Windows App SDK, and Windows 10 version 1809
+(`10.0.17763.0`) or newer.
 
-Before building, install the Visual Studio components listed in `.vsconfig`.
-Visual Studio should prompt to install missing components when the solution is opened.
-You can also import `.vsconfig` from Visual Studio Installer.
+Before compiling the app, install Visual Studio 2022 with the components listed
+in `.vsconfig`. Visual Studio should prompt to install missing components when
+the solution is opened. You can also import `.vsconfig` from Visual Studio
+Installer.
+
+For WinUI 3, Visual Studio 2022 should include:
+
+* .NET desktop development
+* Windows application development
+* Windows App SDK tooling
+* MSIX/PRI packaging components
+* MSVC C++ tools, used by the XAML compiler
+
+Check the local machine first:
 
 ```powershell
 .\scripts\Test-BuildPrerequisites.ps1
-dotnet restore FlowFlow.sln
-$vsPath = (& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -products * -version "[17.0,18.0)" -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1)
-& "$vsPath\MSBuild\Current\Bin\MSBuild.exe" FlowFlow.sln /p:Configuration=Debug
+```
+
+If PowerShell blocks local scripts, run the same check with an execution-policy
+bypass for this process:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-BuildPrerequisites.ps1
 ```
 
 If Visual Studio is installed in a custom location, pass it explicitly:
@@ -53,16 +69,23 @@ If Visual Studio is installed in a custom location, pass it explicitly:
 .\scripts\Test-BuildPrerequisites.ps1 -VisualStudioPath "D:\Apps\Visual Studio\2022\BuildTools"
 ```
 
-For WinUI 3, Visual Studio 2022 should include:
+Restore and compile from the repository root:
 
-* .NET desktop development
-* Windows application development
-* Windows App SDK tooling
-* MSIX/PRI packaging build tools
-* MSVC C++ tools, used by the XAML compiler
+```powershell
+dotnet restore FlowFlow.sln
+dotnet build FlowFlow.sln -c Debug
+```
 
-If the build fails with a missing `Microsoft.Build.Packaging.Pri.Tasks.dll`, update the Visual Studio installation using `.vsconfig`. That task is provided by the Windows app packaging components used by WinUI resource generation.
-If the build fails with a missing `VC\Tools\MSVC` directory, install the MSVC C++ toolchain from `.vsconfig`.
+Run the generated `FlowFlow.exe` from the `FlowFlow\bin\Debug\` output tree.
+
+FlowFlow stores local data in `Documents\FlowFlow`. To reset local app data,
+close the app and delete that folder.
+
+If compilation fails with a missing `Microsoft.Build.Packaging.Pri.Tasks.dll`,
+update the Visual Studio installation using `.vsconfig`; that task is provided
+by the Windows app packaging components used by WinUI resource generation. If
+compilation fails with a missing `VC\Tools\MSVC` directory, install the MSVC C++
+toolchain from `.vsconfig`.
 
 ## Next MVP Steps
 
