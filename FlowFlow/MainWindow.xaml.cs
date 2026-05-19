@@ -1,4 +1,5 @@
 using System.Drawing;
+using static FlowFlow.Services.GlobalHotkeyService;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -23,14 +24,25 @@ public sealed partial class MainWindow : Window
             new FileSystemTaskStore(),
             _captureService,
             new ResumePromptGenerator(),
-            new ClipboardService());
+            new ClipboardService(),
+            DispatcherQueue);
         ShellRoot.DataContext = _viewModel;
 
         SetWindowChrome();
-        _hotkeyService.Register(
-            this,
-            () => _ = DispatcherQueue.TryEnqueue(async () => await _viewModel.CaptureFullScreenAsync()),
+        _hotkeyService.Attach(this);
+        var fullScreenResult = _hotkeyService.RegisterHotkey(
+            1,
+            MOD_CONTROL | MOD_SHIFT,
+            VK_1,
+            "Ctrl+Shift+1",
+            () => _ = DispatcherQueue.TryEnqueue(async () => await _viewModel.CaptureFullScreenAsync()));
+        var regionResult = _hotkeyService.RegisterHotkey(
+            2,
+            MOD_CONTROL | MOD_SHIFT,
+            VK_2,
+            "Ctrl+Shift+2",
             () => _ = DispatcherQueue.TryEnqueue(async () => await CaptureRegionAsync()));
+        _viewModel.ReportHotkeyResults([fullScreenResult, regionResult]);
         Closed += (_, _) => _hotkeyService.Dispose();
     }
 
@@ -51,12 +63,19 @@ public sealed partial class MainWindow : Window
         var region = await RegionSelectionWindow.PickRegionAsync();
         if (region is null)
         {
-            _viewModel.StatusText = "Region capture canceled.";
+            _viewModel.SetStatus("Region capture canceled or selection too small.", StatusSeverity.Info);
             return;
         }
 
-        await _captureService.CaptureRegionAsync(region.Value, path);
-        _viewModel.AddCapturedRegion(path);
+        try
+        {
+            await _captureService.CaptureRegionAsync(region.Value, path);
+            _viewModel.AddCapturedRegion(path);
+        }
+        catch (Exception ex)
+        {
+            _viewModel.ReportCaptureFailure(ex);
+        }
     }
 
     private void SetWindowChrome()

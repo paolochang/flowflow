@@ -4,46 +4,78 @@ using WinRT.Interop;
 
 namespace FlowFlow.Services;
 
+public sealed record HotkeyRegistration(string Chord, bool Succeeded, string? Error);
+
 public sealed class GlobalHotkeyService : IDisposable
 {
+    public const uint MOD_CONTROL = 0x0002;
+    public const uint MOD_SHIFT = 0x0004;
+    public const uint VK_1 = 0x31;
+    public const uint VK_2 = 0x32;
+
     private const int WM_HOTKEY = 0x0312;
-    private const uint MOD_CONTROL = 0x0002;
-    private const uint MOD_SHIFT = 0x0004;
-    private const uint VK_1 = 0x31;
-    private const uint VK_2 = 0x32;
+    private const int ERROR_HOTKEY_ALREADY_REGISTERED = 1409;
     private readonly Dictionary<int, Action> _actions = [];
+    private readonly HashSet<int> _registeredHotkeyIds = [];
     private IntPtr _hwnd;
     private IntPtr _oldWndProc;
     private WndProcDelegate? _newWndProc;
-    private bool _registered;
+    private bool _attached;
 
-    public void Register(Window window, Action captureFullScreen, Action captureRegion)
+    public void Attach(Window window)
     {
-        _hwnd = WindowNative.GetWindowHandle(window);
-        _actions[1] = captureFullScreen;
-        _actions[2] = captureRegion;
-        _newWndProc = WndProc;
-        _oldWndProc = SetWindowLongPtr(_hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(_newWndProc));
-
-        RegisterHotKey(_hwnd, 1, MOD_CONTROL | MOD_SHIFT, VK_1);
-        RegisterHotKey(_hwnd, 2, MOD_CONTROL | MOD_SHIFT, VK_2);
-        _registered = true;
-    }
-
-    public void Dispose()
-    {
-        if (!_registered)
+        if (_attached)
         {
             return;
         }
 
-        UnregisterHotKey(_hwnd, 1);
-        UnregisterHotKey(_hwnd, 2);
+        _hwnd = WindowNative.GetWindowHandle(window);
+        _newWndProc = WndProc;
+        _oldWndProc = SetWindowLongPtr(_hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(_newWndProc));
+        _attached = true;
+    }
+
+    public HotkeyRegistration RegisterHotkey(int id, uint modifiers, uint vk, string chordLabel, Action handler)
+    {
+        if (!_attached)
+        {
+            return new HotkeyRegistration(chordLabel, false, "window not attached");
+        }
+
+        if (!RegisterHotKey(_hwnd, id, modifiers, vk))
+        {
+            var code = Marshal.GetLastWin32Error();
+            var error = code == ERROR_HOTKEY_ALREADY_REGISTERED
+                ? "already in use by another application"
+                : $"Win32 error {code}";
+            return new HotkeyRegistration(chordLabel, false, error);
+        }
+
+        _actions[id] = handler;
+        _registeredHotkeyIds.Add(id);
+        return new HotkeyRegistration(chordLabel, true, null);
+    }
+
+    public void Dispose()
+    {
+        if (!_attached)
+        {
+            return;
+        }
+
+        foreach (var id in _registeredHotkeyIds)
+        {
+            UnregisterHotKey(_hwnd, id);
+        }
 
         if (_oldWndProc != IntPtr.Zero)
         {
             SetWindowLongPtr(_hwnd, GWLP_WNDPROC, _oldWndProc);
         }
+
+        _registeredHotkeyIds.Clear();
+        _actions.Clear();
+        _attached = false;
     }
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
